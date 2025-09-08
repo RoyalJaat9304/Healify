@@ -6,4 +6,3 @@ Utilized major libraries including *scikit-learn, NumPy, matplotlib, pandas, Tki
 The project involves training multiple machine learning models on a structured dataset of patient symptoms. Once trained, these models can predict the likely disease based on unseen or test inputs.
 
 A *Graphical User Interface (GUI)* has been built using *Tkinter* to make the system user-friendly. This interface allows users to input patient symptoms and receive real-time predictions of possible diseases, enhancing accessibility and usability.
-
