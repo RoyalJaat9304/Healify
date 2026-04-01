@@ -16,6 +16,8 @@ PROGNOSIS_MAP = {'Fungal infection':0,'Allergy':1,'GERD':2,'Chronic cholestasis'
     '(vertigo) Paroymsal  Positional Vertigo':36,'Acne':37,'Urinary tract infection':38,'Psoriasis':39,
     'Impetigo':40}
 
+DISEASE_BY_ID = {value: key for key, value in PROGNOSIS_MAP.items()}
+
 l1=['back_pain','constipation','abdominal_pain','diarrhoea','mild_fever','yellow_urine',
     'yellowing_of_eyes','acute_liver_failure','fluid_overload','swelling_of_stomach',
     'swelled_lymph_nodes','malaise','blurred_and_distorted_vision','phlegm','throat_irritation',
@@ -40,12 +42,12 @@ l1=['back_pain','constipation','abdominal_pain','diarrhoea','mild_fever','yellow
     
 
 disease=['Fungal infection','Allergy','GERD','Chronic cholestasis','Drug Reaction',
-    'Peptic ulcer diseae','AIDS','Diabetes','Gastroenteritis','Bronchial Asthma','Hypertension',
-    ' Migraine','Cervical spondylosis',
+    'Peptic ulcer diseae','AIDS','Diabetes ','Gastroenteritis','Bronchial Asthma','Hypertension ',
+    'Migraine','Cervical spondylosis',
     'Paralysis (brain hemorrhage)','Jaundice','Malaria','Chicken pox','Dengue','Typhoid','hepatitis A',
     'Hepatitis B','Hepatitis C','Hepatitis D','Hepatitis E','Alcoholic hepatitis','Tuberculosis',
     'Common Cold','Pneumonia','Dimorphic hemmorhoids(piles)',
-    'Heartattack','Varicoseveins','Hypothyroidism','Hyperthyroidism','Hypoglycemia','Osteoarthristis',
+    'Heart attack','Varicose veins','Hypothyroidism','Hyperthyroidism','Hypoglycemia','Osteoarthristis',
     'Arthritis','(vertigo) Paroymsal  Positional Vertigo','Acne','Urinary tract infection','Psoriasis',
     'Impetigo']
 
@@ -66,6 +68,8 @@ for i in range(0,len(l1)):
     l2.append(0)
 print(l2)
 
+DF = df.groupby("Prognosis")[l1].sum()
+
 df['Prognosis'] = pd.to_numeric(df['Prognosis'].replace(PROGNOSIS_MAP), errors='raise')
 
 X= df[l1]
@@ -85,8 +89,20 @@ y_test = te["Prognosis"].astype(int)
 print(X_test)
 print(y_test)
 
+def build_input_vector(symptoms):
+    symptom_flags = [0] * len(l1)
+    for idx, symptom in enumerate(l1):
+        if symptom in symptoms:
+            symptom_flags[idx] = 1
+    return symptom_flags
+
+def get_predicted_disease(predicted_id):
+    return DISEASE_BY_ID.get(int(predicted_id), "Not Found")
+
 def scatterplt(disea):
-    x = ((DF.loc[disea]).sum())
+    if disea not in DF.index:
+        return
+    x = DF.loc[disea].copy()
     x.drop(x[x==0].index,inplace=True)
     print(x.values)
     y = x.keys()
@@ -150,29 +166,11 @@ def DecisionTree():
         print(conf_matrix)
 
         psymptoms = [Symptom1.get(),Symptom2.get(),Symptom3.get(),Symptom4.get(),Symptom5.get()]
-
-        for k in range(0,len(l1)):
-            for z in psymptoms:
-                if(z==l1[k]):
-                    l2[k]=1
-
-        inputtest = [l2]
+        inputtest = [build_input_vector(psymptoms)]
         predict = clf3.predict(inputtest)
         predicted=predict[0]
-
-        h='no'
-        for a in range(0,len(disease)):
-            if(predicted == a):
-                h='yes'
-                break
-
-    
-        if (h=='yes'):
-            pred1.set(" ")
-            pred1.set(disease[a])
-        else:
-            pred1.set(" ")
-            pred1.set("Not Found")
+        pred1.set(" ")
+        pred1.set(get_predicted_disease(predicted))
         import sqlite3 
         conn = sqlite3.connect('database.db') 
         c = conn.cursor() 
@@ -200,10 +198,10 @@ def randomforest():
     else:
         from sklearn.ensemble import RandomForestClassifier
         clf4 = RandomForestClassifier(n_estimators=100)
-        clf4 = clf4.fit(X,np.ravel(y))
+        clf4 = clf4.fit(X,y)
 
          
-        from sklearn.metrics import classification_report,confusion_matrix,accuracy_score
+        from sklearn.metrics import classification_report,confusion_matrix,accuracy_score,precision_score,recall_score,f1_score
         y_pred=clf4.predict(X_test)
         print("Random Forest")
         print("Accuracy")
@@ -214,27 +212,11 @@ def randomforest():
         print(conf_matrix)
     
         psymptoms = [Symptom1.get(),Symptom2.get(),Symptom3.get(),Symptom4.get(),Symptom5.get()]
-
-        for k in range(0,len(l1)):
-            for z in psymptoms:
-                if(z==l1[k]):
-                    l2[k]=1
-
-        inputtest = [l2]
+        inputtest = [build_input_vector(psymptoms)]
         predict = clf4.predict(inputtest)
         predicted=predict[0]
-
-        h='no'
-        for a in range(0,len(disease)):
-            if(predicted == a):
-                h='yes'
-                break
-        if (h=='yes'):
-            pred2.set(" ")
-            pred2.set(disease[a])
-        else:
-            pred2.set(" ")
-            pred2.set("Not Found")
+        pred2.set(" ")
+        pred2.set(get_predicted_disease(predicted))
         
         accuracy = accuracy_score(y_test, y_pred)
         conf_matrix = confusion_matrix(y_test, y_pred)
@@ -269,7 +251,7 @@ def NaiveBayes():
     else:
         from sklearn.naive_bayes import GaussianNB
         gnb = GaussianNB()
-        gnb=gnb.fit(X,np.ravel(y))
+        gnb=gnb.fit(X,y)
 
         from sklearn.metrics import classification_report,confusion_matrix,accuracy_score
         y_pred=gnb.predict(X_test)
@@ -282,26 +264,11 @@ def NaiveBayes():
         print(conf_matrix)
 
         psymptoms = [Symptom1.get(),Symptom2.get(),Symptom3.get(),Symptom4.get(),Symptom5.get()]
-        for k in range(0,len(l1)):
-            for z in psymptoms:
-                if(z==l1[k]):
-                    l2[k]=1
-
-        inputtest = [l2]
+        inputtest = [build_input_vector(psymptoms)]
         predict = gnb.predict(inputtest)
         predicted=predict[0]
-
-        h='no'
-        for a in range(0,len(disease)):
-            if(predicted == a):
-                h='yes'
-                break
-        if (h=='yes'):
-            pred3.set(" ")
-            pred3.set(disease[a])
-        else:
-            pred3.set(" ")
-            pred3.set("Not Found")
+        pred3.set(" ")
+        pred3.set(get_predicted_disease(predicted))
         import sqlite3 
         conn = sqlite3.connect('database.db') 
         c = conn.cursor() 
@@ -328,7 +295,7 @@ def KNN():
     else:
         from sklearn.neighbors import KNeighborsClassifier
         knn=KNeighborsClassifier(n_neighbors=5,metric='minkowski',p=2)
-        knn=knn.fit(X,np.ravel(y))
+        knn=knn.fit(X,y)
     
         from sklearn.metrics import classification_report,confusion_matrix,accuracy_score
         y_pred=knn.predict(X_test)
@@ -341,29 +308,11 @@ def KNN():
         print(conf_matrix)
 
         psymptoms = [Symptom1.get(),Symptom2.get(),Symptom3.get(),Symptom4.get(),Symptom5.get()]
-
-        for k in range(0,len(l1)):
-            for z in psymptoms:
-                if(z==l1[k]):
-                    l2[k]=1
-
-        inputtest = [l2]
+        inputtest = [build_input_vector(psymptoms)]
         predict = knn.predict(inputtest)
         predicted=predict[0]
-
-        h='no'
-        for a in range(0,len(disease)):
-            if(predicted == a):
-                h='yes'
-                break
-
-
-        if (h=='yes'):
-            pred4.set(" ")
-            pred4.set(disease[a])
-        else:
-            pred4.set(" ")
-            pred4.set("Not Found")
+        pred4.set(" ")
+        pred4.set(get_predicted_disease(predicted))
         import sqlite3 
         conn = sqlite3.connect('database.db') 
         c = conn.cursor() 
